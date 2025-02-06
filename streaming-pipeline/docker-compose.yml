@@ -1,0 +1,41 @@
+version: '3'
+services:
+  redpanda:
+    image: docker.redpanda.com/vectorized/redpanda:latest
+    container_name: redpanda
+    ports:
+      - "9092:9092"  # Kafka API
+      - "9644:9644"  # Metrics endpoint
+    command: redpanda start --smp 1 --memory 1G --overprovisioned
+  
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  oracle:
+    image: gvenzl/oracle-xe:latest
+    container_name: oracle
+    environment:
+      ORACLE_PASSWORD: admin
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+  
+  airflow:
+    image: apache/airflow:latest
+    container_name: airflow
+    depends_on:
+      - redis
+      - oracle
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: sqlite:////usr/local/airflow/airflow.db
+    volumes:
+      - ./airflow/dags:/usr/local/airflow/dags
+    ports:
+      - "8080:8080"
